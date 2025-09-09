@@ -1,0 +1,203 @@
+# Step 4: パーティクルエフェクト
+
+2Dキャンバスから始めて、Three.jsのパーティクルシステムでWebARに魅力的なエフェクトを追加します。
+
+## 実装手順
+
+### 1. Canvas 2D パーティクル（基礎）
+
+まずは2Dキャンバスでパーティクルの基本概念を理解します：
+
+```tsx
+const particles: Array<{
+  x: number;
+  y: number;
+  vx: number;  // x方向の速度
+  vy: number;  // y方向の速度
+  life: number;
+  maxLife: number;
+}> = [];
+
+const createParticle = (x: number, y: number) => {
+  return {
+    x, y,
+    vx: (Math.random() - 0.5) * 2,
+    vy: (Math.random() - 0.5) * 2,
+    life: 60,
+    maxLife: 60
+  };
+};
+
+// アニメーションループ
+const animate = () => {
+  // 背景をクリア（トレイル効果）
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    
+    // 位置更新
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+
+    // 境界チェック（バウンス）
+    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+    // 描画（アルファ値で フェードアウト）
+    const alpha = p.life / p.maxLife;
+    ctx.fillStyle = `rgba(255, 105, 180, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 寿命切れで削除
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+    }
+  }
+
+  requestAnimationFrame(animate);
+};
+```
+
+### 2. Three.js BufferGeometry パーティクル
+
+高性能な3Dパーティクルシステム：
+
+```tsx
+const particleCount = 100;
+const particles = new window.THREE.BufferGeometry();
+
+// 位置データ（x, y, z * particleCount）
+const positions = new Float32Array(particleCount * 3);
+// 色データ（r, g, b * particleCount）
+const colors = new Float32Array(particleCount * 3);
+const velocities: number[] = [];
+
+// 初期データ設定
+for (let i = 0; i < particleCount; i++) {
+  // 位置
+  positions[i * 3] = (Math.random() - 0.5) * 2;     // x
+  positions[i * 3 + 1] = (Math.random() - 0.5) * 2; // y
+  positions[i * 3 + 2] = (Math.random() - 0.5) * 0.5; // z
+
+  // 色（HSVライク）
+  colors[i * 3] = Math.random();           // r
+  colors[i * 3 + 1] = Math.random() * 0.5 + 0.5; // g
+  colors[i * 3 + 2] = 1.0;                 // b
+
+  // 速度
+  velocities.push(
+    (Math.random() - 0.5) * 0.01,
+    (Math.random() - 0.5) * 0.01,
+    (Math.random() - 0.5) * 0.005
+  );
+}
+
+// BufferGeometryにデータ設定
+particles.setAttribute('position', new window.THREE.BufferAttribute(positions, 3));
+particles.setAttribute('color', new window.THREE.BufferAttribute(colors, 3));
+
+// PointsMaterialで描画
+const material = new window.THREE.PointsMaterial({
+  size: 0.05,
+  vertexColors: true,
+  transparent: true,
+  opacity: 0.8
+});
+
+const particleSystem = new window.THREE.Points(particles, material);
+anchor.group.add(particleSystem);
+```
+
+### 3. アニメーション更新
+
+パーティクルの位置を毎フレーム更新：
+
+```tsx
+const animate = () => {
+  const positions = particles.attributes.position.array as Float32Array;
+  
+  for (let i = 0; i < particleCount; i++) {
+    // 位置更新
+    positions[i * 3] += velocities[i * 3];     // x
+    positions[i * 3 + 1] += velocities[i * 3 + 1]; // y
+    positions[i * 3 + 2] += velocities[i * 3 + 2]; // z
+
+    // 境界チェック（バウンス）
+    if (Math.abs(positions[i * 3]) > 1) velocities[i * 3] *= -1;
+    if (Math.abs(positions[i * 3 + 1]) > 1) velocities[i * 3 + 1] *= -1;
+    if (Math.abs(positions[i * 3 + 2]) > 0.25) velocities[i * 3 + 2] *= -1;
+  }
+  
+  // 重要：BufferGeometryに変更を通知
+  particles.attributes.position.needsUpdate = true;
+  requestAnimationFrame(animate);
+};
+```
+
+### 4. MindAR統合
+
+ARターゲット上でパーティクルエフェクトを表示：
+
+```tsx
+const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+  container: containerRef.current,
+  imageTargetSrc: '/assets/targets/sample.mind'
+});
+
+const anchor = mindarThree.addAnchor(0);
+anchor.group.add(particleSystem);
+
+await mindarThree.start();
+animate();
+
+// ターゲット検出イベント
+anchor.onTargetFound = () => {
+  console.log('Target found - particles visible!');
+};
+
+anchor.onTargetLost = () => {
+  console.log('Target lost - particles hidden');
+};
+```
+
+## パーティクル応用テクニック
+
+### 重力効果
+```tsx
+velocities[i * 3 + 1] -= 0.001; // Y軸に重力を追加
+```
+
+### 回転運動
+```tsx
+const angle = Date.now() * 0.001 + i * 0.1;
+positions[i * 3] = Math.cos(angle) * radius;
+positions[i * 3 + 2] = Math.sin(angle) * radius;
+```
+
+### 色の時間変化
+```tsx
+colors[i * 3] = (Math.sin(Date.now() * 0.001 + i) + 1) * 0.5;
+```
+
+## パフォーマンス最適化
+
+- **BufferGeometry使用**: 大量のパーティクルに必須
+- **needsUpdate制御**: 必要時のみ更新フラグを設定
+- **パーティクル数調整**: デバイス性能に応じて動的調整
+- **LOD (Level of Detail)**: 距離に応じてパーティクル密度を調整
+
+## チェックポイント
+
+- 2Dキャンバスでパーティクルが動作する
+- Three.jsでBufferGeometry使用のパーティクルシステム
+- ARターゲット上でパーティクルが舞う
+- パフォーマンスを意識したアニメーション実装
+
+## 次のステップ
+
+パーティクルエフェクトが動作したら、[Step 5: UI/リンクボタン](./step5-ui-links)で最終仕上げを行います。

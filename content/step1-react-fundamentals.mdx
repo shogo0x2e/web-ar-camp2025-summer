@@ -1,0 +1,79 @@
+# Step 1: React基礎
+
+JSX、useState、useEffect の基本を理解してインタラクティブなコンポーネントを作成します。
+
+## 実装手順
+
+### 1. 'use client' ディレクティブ
+
+```tsx
+'use client';
+```
+
+Next.js App RouterでクライアントサイドのReactフックを使用するために必要です。
+
+### 2. useState でステート管理
+
+```tsx
+import { useState } from 'react';
+
+const [count, setCount] = useState(0);
+```
+
+コンポーネントの状態を管理するためのフックです。
+
+### 3. useEffect でマウント時処理
+
+```tsx
+import { useEffect } from 'react';
+
+useEffect(() => {
+  console.log('Component mounted');
+}, []); // 空の依存配列でマウント時のみ実行
+```
+
+コンポーネントのライフサイクルイベントを処理します。
+
+### 4. イベントハンドラ
+
+```tsx
+<button onClick={() => setCount(count + 1)}>
+  Increment
+</button>
+```
+
+ユーザーのインタラクションに応答してステートを更新します。
+
+## サンプルコード
+
+```tsx
+'use client';
+import { useState, useEffect } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    console.log('Component mounted');
+  }, []);
+
+  return (
+    <div>
+      <h1>Count: {count}</h1>
+      <button onClick={() => setCount(count + 1)}>
+        Increment
+      </button>
+    </div>
+  );
+}
+```
+
+## チェックポイント
+
+- ボタンクリックでカウントが増加する
+- ブラウザコンソール（F12）に「mounted」ログが表示される
+- JSX、useState、useEffect の基本動作を理解した
+
+## 次のステップ
+
+React基礎が理解できたら、[Step 2: MindARセットアップ](./step2-mindar)に進んでください。

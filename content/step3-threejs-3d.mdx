@@ -1,0 +1,167 @@
+# Step 3: Three.js + 3Dモデル
+
+Three.jsの基礎からReact Three Fiberまで、MindARと連携して3Dオブジェクトをトラッキング位置に配置します。
+
+## 実装手順
+
+### 1. 依存関係インストール
+
+```bash
+npm install three @react-three/fiber @react-three/drei
+npm install --save-dev @types/three
+```
+
+### 2. Three.js基礎（直接使用）
+
+まずはThree.jsを直接使用して3Dシーンを作成します：
+
+```tsx
+import Script from 'next/script';
+
+// Three.js読み込み
+<Script 
+  src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
+  onLoad={() => console.log('Three.js loaded')}
+/>
+
+// 基本的な3Dシーン
+const scene = new window.THREE.Scene();
+const camera = new window.THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+const renderer = new window.THREE.WebGLRenderer({ canvas });
+
+const geometry = new window.THREE.BoxGeometry(1, 1, 1);
+const material = new window.THREE.MeshBasicMaterial({ color: 0xff69b4 });
+const cube = new window.THREE.Mesh(geometry, material);
+scene.add(cube);
+
+const animate = () => {
+  cube.rotation.x += 0.01;
+  cube.rotation.y += 0.01;
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+};
+```
+
+### 3. MindAR + Three.js統合
+
+MindARThreeを使用してARシーンに3Dオブジェクトを配置：
+
+```tsx
+// MindAR Three.js読み込み
+<Script 
+  src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js"
+  strategy="beforeInteractive"
+/>
+
+// AR + 3D統合
+const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+  container: containerRef.current,
+  imageTargetSrc: '/assets/targets/sample.mind'
+});
+
+const { renderer, scene, camera } = mindarThree;
+const anchor = mindarThree.addAnchor(0);
+
+// 3Dオブジェクト作成
+const geometry = new window.THREE.BoxGeometry(0.5, 0.5, 0.5);
+const material = new window.THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const cube = new window.THREE.Mesh(geometry, material);
+
+anchor.group.add(cube);
+
+// アニメーション
+const clock = new window.THREE.Clock();
+const animate = () => {
+  const delta = clock.getElapsedTime();
+  cube.rotation.x = delta * 0.5;
+  cube.rotation.y = delta * 0.8;
+  requestAnimationFrame(animate);
+};
+
+await mindarThree.start();
+animate();
+```
+
+### 4. React Three Fiber（推奨アプローチ）
+
+SSR回避のためのdynamic import：
+
+```tsx
+import dynamic from 'next/dynamic';
+
+const Canvas = dynamic(
+  () => import('@react-three/fiber').then(mod => mod.Canvas),
+  { ssr: false }
+);
+
+function Box() {
+  const meshRef = useRef();
+  
+  useFrame(() => {
+    meshRef.current.rotation.x += 0.01;
+    meshRef.current.rotation.y += 0.01;
+  });
+
+  return (
+    <mesh ref={meshRef}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color="hotpink" />
+    </mesh>
+  );
+}
+
+<Canvas>
+  <ambientLight />
+  <pointLight position={[10, 10, 10]} />
+  <Box />
+</Canvas>
+```
+
+### 5. GLB/GLTFモデル読み込み
+
+3Dモデルファイルを読み込んで表示：
+
+```tsx
+import { useGLTF } from '@react-three/drei';
+
+function Model() {
+  const { scene } = useGLTF('/models/logo.glb');
+  return <primitive object={scene} />;
+}
+
+// MindARとの統合
+const { scene } = useGLTF('/models/logo.glb');
+anchor.group.add(scene);
+```
+
+## ファイル構成
+
+```
+public/
+  assets/
+    targets/
+      sample.png      # ターゲット画像
+      sample.mind     # MindARファイル
+  models/
+    logo.glb          # 3Dモデル（オプション）
+```
+
+## Three.js 基本概念
+
+- **Scene**: 3Dオブジェクトを配置する空間
+- **Camera**: シーンを見る視点
+- **Renderer**: シーンをキャンバスに描画
+- **Geometry**: 3Dオブジェクトの形状
+- **Material**: オブジェクトの見た目（色、質感）
+- **Mesh**: GeometryとMaterialを組み合わせたオブジェクト
+
+## チェックポイント
+
+- Three.jsで3Dオブジェクトが表示される
+- MindARとThree.jsが連携して動作する
+- ターゲット画像上に3Dオブジェクトが安定して配置される
+- React Three Fiberの使用方法を理解した
+
+## 次のステップ
+
+3Dオブジェクトが表示できたら、[Step 4: パーティクルエフェクト](./step4-particles)に進んでください。

@@ -1,0 +1,149 @@
+# Step 2: MindARセットアップ
+
+画像トラッキングライブラリMindARを導入して、カメラアクセスと基本的なAR機能を実装します。
+
+## 実装手順
+
+### 1. A-Frame + MindAR統合（推奨）
+
+Next.jsでMindARを使う最も安定した方法は、A-Frameとの組み合わせです：
+
+```tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import Script from 'next/script';
+
+export default function Step2MindAR() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const checkReady = () => {
+      // @ts-ignore
+      if (window.AFRAME && window.AFRAME.components['mindar-image']) {
+        setReady(true);
+      } else {
+        setTimeout(checkReady, 100);
+      }
+    };
+    setTimeout(checkReady, 500);
+  }, []);
+
+  return (
+    <>
+      {/* A-Frame */}
+      <Script 
+        src="https://aframe.io/releases/1.5.0/aframe.min.js"
+        strategy="beforeInteractive"
+      />
+      
+      {/* MindAR A-Frame */}
+      <Script 
+        src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"
+        strategy="beforeInteractive"
+      />
+
+      {/* Global styles */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            height: 100vh;
+            width: 100vw;
+          }
+          a-scene { 
+            position: fixed; 
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 1;
+          }
+        `
+      }} />
+
+      {/* Scene renders only when scripts are ready */}
+      {ready && (
+        // @ts-ignore
+        <a-scene 
+          mindar-image="imageTargetSrc: /assets/targets/sample.mind; autoStart: true;"
+          vr-mode-ui="enabled: false" 
+          device-orientation-permission-ui="enabled: false"
+          embedded
+        >
+          {/* @ts-ignore */}
+          <a-camera 
+            position="0 0 0" 
+            look-controls="enabled: false"
+          />
+
+          {/* @ts-ignore */}
+          <a-entity mindar-image-target="targetIndex: 0">
+            {/* @ts-ignore */}
+            <a-text 
+              value="AR is Working!" 
+              position="0 0 0" 
+              align="center"
+              color="white"
+            />
+          </a-entity>
+        </a-scene>
+      )}
+    </>
+  );
+}
+```
+
+### 2. ライブラリ読み込み
+
+A-Frame + MindAR統合では2つのCDNを順番に読み込みます：
+
+- **A-Frame**: WebVR/WebXRフレームワーク
+- **MindAR A-Frame**: MindARのA-Frame統合版
+
+### 3. 重要なポイント
+
+#### CSS競合回避
+```css
+* { margin: 0; padding: 0; box-sizing: border-box; }
+a-scene { 
+  position: fixed; 
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+```
+
+#### TypeScript対応
+A-Frame要素は標準のJSX要素ではないため、`// @ts-ignore`を使用します。
+
+#### スクリプト読み込み待機
+`beforeInteractive`でスクリプトを読み込み、`useState`で準備完了を監視します。
+
+## 必要なファイル
+
+- **ターゲット画像**: `/public/assets/targets/sample.png`
+- **Mindファイル**: `/public/assets/targets/sample.mind`
+
+MindファイルはMindAR Image Targetingツールで生成する必要があります。
+
+## 重要な注意事項
+
+- **HTTPS必須**: WebRTCのgetUserMedia APIはHTTPS環境でのみ動作
+- **カメラ許可**: ユーザーのカメラアクセス許可が必要
+- **ブラウザ互換性**: モダンブラウザのみサポート
+
+## チェックポイント
+
+- ライブラリが正常に読み込まれる
+- カメラアクセス許可のダイアログが表示される
+- カメラプレビューが表示される
+- ターゲット画像検出時にコンソールログが出力される
+
+## 次のステップ
+
+MindARが動作したら、[Step 3: Three.js + 3Dモデル](./step3-threejs-3d)に進んでください。
